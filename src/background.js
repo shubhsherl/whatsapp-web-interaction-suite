@@ -1,9 +1,105 @@
+/** Global variables for campaign state */
+let activeCampaigns = {};
+let wakeLock = null;
+
 /** Listen port.postMessage from content.js */
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.action === 'contentjsToBackground') {
         console.log("BG Received Message", request);
         sendWhatsappMessage(request, sendResponse);
         return true;
+    } else if (request.action === 'enableKeepAwake') {
+        // Enable wake lock for a campaign
+        enableWakeLock(request.campaignId);
+        sendResponse({ success: true });
+        return true;
+    } else if (request.action === 'disableKeepAwake') {
+        // Disable wake lock for a campaign
+        disableWakeLock(request.campaignId);
+        sendResponse({ success: true });
+        return true;
+    } else if (request.action === 'getCampaignStatus') {
+        // Return the status of active campaigns
+        sendResponse({ 
+            activeCampaigns: activeCampaigns,
+            hasActiveCampaign: Object.keys(activeCampaigns).length > 0
+        });
+        return true;
+    }
+});
+
+/** 
+ * Enable wake lock for a campaign 
+ * This keeps the extension running even when the popup is closed
+ */
+async function enableWakeLock(campaignId) {
+    // Add campaign to active campaigns
+    activeCampaigns[campaignId] = {
+        startTime: Date.now(),
+        active: true
+    };
+    
+    console.log(`Wake lock enabled for campaign ${campaignId}`);
+    
+    // If this is the first active campaign, request wake lock
+    if (Object.keys(activeCampaigns).length === 1) {
+        try {
+            // Use a service worker to keep the extension alive
+            chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
+        } catch (err) {
+            console.error(`Error enabling wake lock: ${err.message}`);
+        }
+    }
+}
+
+/**
+ * Disable wake lock for a campaign
+ */
+function disableWakeLock(campaignId) {
+    // Remove campaign from active campaigns
+    if (activeCampaigns[campaignId]) {
+        delete activeCampaigns[campaignId];
+        console.log(`Wake lock disabled for campaign ${campaignId}`);
+    }
+    
+    // If no active campaigns, release wake lock
+    if (Object.keys(activeCampaigns).length === 0) {
+        try {
+            chrome.alarms.clear('keepAlive');
+            console.log('All wake locks released');
+        } catch (err) {
+            console.error(`Error disabling wake lock: ${err.message}`);
+        }
+    }
+}
+
+// Set up alarm handler to keep the service worker alive
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'keepAlive') {
+        // Check if we still have active campaigns
+        if (Object.keys(activeCampaigns).length > 0) {
+            console.log('Keep-alive ping for active campaigns');
+            
+            // Clean up any campaigns that are more than 2 hours old
+            const now = Date.now();
+            const twoHoursMs = 2 * 60 * 60 * 1000;
+            
+            Object.keys(activeCampaigns).forEach(campaignId => {
+                if (now - activeCampaigns[campaignId].startTime > twoHoursMs) {
+                    console.log(`Auto-cleaning campaign ${campaignId} after 2 hours`);
+                    delete activeCampaigns[campaignId];
+                }
+            });
+            
+            // If we still have active campaigns, keep the alarm
+            if (Object.keys(activeCampaigns).length === 0) {
+                chrome.alarms.clear('keepAlive');
+                console.log('All campaigns finished, releasing wake lock');
+            }
+        } else {
+            // No active campaigns, clear the alarm
+            chrome.alarms.clear('keepAlive');
+        }
     }
 });
 
