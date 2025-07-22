@@ -14,7 +14,7 @@ let currentRecipientIndex = 0;
 let currentCampaignId = null;
 let appSettings = {
     randomDelayEnabled: true,
-    maxDelaySeconds: 300, // 5 minutes
+    maxDelaySeconds: 30, // 30 seconds
     pauseAfterBatch: false,
     pauseMinutes: 5,
     batchSize: 40,
@@ -288,142 +288,188 @@ function generateUniqueId() {
     return timestamp + randomStr;
 }
 
-// Handle CSV file upload
+// Handle CSV/Excel file upload
 function handleCsvUpload(event, tabName) {
     const file = event.target.files[0];
     if (!file) return;
     
+    const fileExtension = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
     const statusElement = document.getElementById(`${tabName}Status`);
     
-    reader.onload = function(e) {
-        try {
-            const csvData = parseCsv(e.target.result);
-            
-            // Validate CSV structure
-            if (csvData.length === 0) {
-                showStatus(`${tabName}Status`, '❌ CSV file is empty', 'error');
-                return;
-            }
-            
-            const headers = csvData[0];
-            const rows = csvData.slice(1).filter(row => row.some(cell => cell.trim() !== ''));
-            
-            // Check if number column exists
-            const numberColumnIndex = headers.findIndex(header => 
-                header.toLowerCase().includes('number') || 
-                header.toLowerCase().includes('phone') || 
-                header.toLowerCase().includes('mobile') || 
-                header.toLowerCase().includes('contact')
-            );
-            
-            if (numberColumnIndex === -1) {
-                showStatus(`${tabName}Status`, '❌ CSV must contain a column named "number", "phone", "mobile", or "contact"', 'error');
-                return;
-            }
-            
-            // Validate phone numbers and collect recipients
-            const recipients = [];
-            const invalidNumbers = [];
-            
-            rows.forEach((row, index) => {
-                if (row.length <= numberColumnIndex) return; // Skip rows that don't have enough columns
+    // Handle different file types
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        // For Excel files
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
                 
-                const phoneNumber = row[numberColumnIndex].trim();
-                if (!phoneNumber) return; // Skip empty phone numbers
+                // Get the first sheet
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
                 
-                if (validateMobile(phoneNumber)) {
-                    // Create recipient object with all columns as potential variables
-                    const recipient = {
-                        number: phoneNumber
-                    };
-                    
-                    // Add all other columns as variables
-                    headers.forEach((header, idx) => {
-                        if (idx !== numberColumnIndex && header.trim()) {
-                            recipient[header.trim().toLowerCase()] = row[idx] || '';
-                        }
-                    });
-                    
-                    recipients.push(recipient);
-                } else {
-                    invalidNumbers.push({
-                        row: index + 2, // +2 because 1-indexed and we skipped header
-                        number: phoneNumber
-                    });
+                // Convert to JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ''});
+                
+                if (jsonData.length === 0) {
+                    showStatus(`${tabName}Status`, '❌ Excel file is empty', 'error');
+                    return;
+                }
+                
+                processSheetData(jsonData, tabName);
+            } catch (error) {
+                console.error('Error parsing Excel:', error);
+                showStatus(`${tabName}Status`, `❌ Error parsing Excel: ${error.message}`, 'error');
+            }
+        };
+        
+        reader.onerror = function() {
+            showStatus(`${tabName}Status`, '❌ Failed to read the Excel file', 'error');
+        };
+        
+        reader.readAsArrayBuffer(file);
+    } else {
+        // For CSV files
+        reader.onload = function(e) {
+            try {
+                const csvData = parseCsv(e.target.result);
+                
+                if (csvData.length === 0) {
+                    showStatus(`${tabName}Status`, '❌ CSV file is empty', 'error');
+                    return;
+                }
+                
+                processSheetData(csvData, tabName);
+            } catch (error) {
+                console.error('Error parsing CSV:', error);
+                showStatus(`${tabName}Status`, `❌ Error parsing CSV: ${error.message}`, 'error');
+            }
+        };
+        
+        reader.onerror = function() {
+            showStatus(`${tabName}Status`, '❌ Failed to read the CSV file', 'error');
+        };
+        
+        reader.readAsText(file);
+    }
+}
+
+// Process data from CSV or Excel
+function processSheetData(data, tabName) {
+    const headers = data[0];
+    const rows = data.slice(1).filter(row => row.some(cell => cell && cell.toString().trim() !== ''));
+    
+    // Check if number column exists - case-insensitive
+    const numberColumnIndex = headers.findIndex(header => {
+        const lowerHeader = header.toString().toLowerCase().trim();
+        return lowerHeader.includes('number') || 
+               lowerHeader.includes('phone') || 
+               lowerHeader.includes('mobile') || 
+               lowerHeader.includes('contact');
+    });
+    
+    if (numberColumnIndex === -1) {
+        showStatus(`${tabName}Status`, '❌ File must contain a column named "number", "phone", "mobile", or "contact" (case-insensitive)', 'error');
+        return;
+    }
+    
+    // Validate phone numbers and collect recipients
+    const recipients = [];
+    const invalidNumbers = [];
+    
+    rows.forEach((row, index) => {
+        if (row.length <= numberColumnIndex) return; // Skip rows that don't have enough columns
+        
+        const phoneNumber = row[numberColumnIndex].toString().trim();
+        if (!phoneNumber) return; // Skip empty phone numbers
+        
+        if (validateMobile(phoneNumber)) {
+            // Create recipient object with all columns as potential variables
+            const recipient = {
+                number: phoneNumber
+            };
+            
+            // Add all other columns as variables - preserve original header case for display
+            headers.forEach((header, idx) => {
+                if (idx !== numberColumnIndex && header && header.toString().trim()) {
+                    // Store with original case for display/matching purposes
+                    recipient[header.toString().trim()] = row[idx] ? row[idx].toString() : '';
+                    // Also store lowercase version for case-insensitive lookups
+                    const lowerHeader = header.toString().trim().toLowerCase();
+                    if (lowerHeader !== header.toString().trim()) {
+                        recipient[`_lc_${lowerHeader}`] = row[idx] ? row[idx].toString() : '';
+                    }
                 }
             });
             
-            // Show validation results
-            if (invalidNumbers.length > 0) {
-                const errorMessage = `❌ Found ${invalidNumbers.length} invalid phone number(s):<br>` +
-                    invalidNumbers.slice(0, 5).map(item => `Row ${item.row}: ${item.number}`).join('<br>') +
-                    (invalidNumbers.length > 5 ? `<br>...and ${invalidNumbers.length - 5} more` : '');
-                
-                showStatus(`${tabName}Status`, errorMessage, 'error');
-                
-                // Still show preview if there are valid numbers
-                if (recipients.length > 0) {
-                    renderCsvPreview(tabName, headers, rows, recipients.length, invalidNumbers.length);
-                }
-                return;
-            }
-            
-            if (recipients.length === 0) {
-                showStatus(`${tabName}Status`, '❌ No valid phone numbers found in the CSV', 'error');
-                return;
-            }
-            
-            // Store recipients data
-            window[`${tabName}Recipients`] = recipients;
-            
-            // Show success message
-            showStatus(`${tabName}Status`, `✅ Successfully loaded ${recipients.length} recipient(s)`, 'success');
-            
-            // Show preview
-            renderCsvPreview(tabName, headers, rows, recipients.length, 0);
-            
-            // Update recipients summary
-            document.getElementById(`${tabName}RecipientsCount`).textContent = `${recipients.length} recipients loaded`;
-            document.getElementById(`${tabName}RecipientsSummary`).style.display = 'block';
-            
-            // Clear any previous recipients
-            const recipientsContainer = document.getElementById(`${tabName}RecipientsContainer`);
-            recipientsContainer.innerHTML = '';
-            
-            // Add first 5 recipients to the summary
-            recipients.slice(0, 5).forEach(recipient => {
-                const recipientItem = document.createElement('div');
-                recipientItem.className = 'recipient-item';
-                
-                const nameDisplay = recipient.name ? `${recipient.name} (${recipient.number})` : recipient.number;
-                
-                recipientItem.innerHTML = `
-                    <div class="recipient-info">${nameDisplay}</div>
-                `;
-                
-                recipientsContainer.appendChild(recipientItem);
+            recipients.push(recipient);
+        } else {
+            invalidNumbers.push({
+                row: index + 2, // +2 because 1-indexed and we skipped header
+                number: phoneNumber
             });
-            
-            // Add "and X more" if there are more than 5 recipients
-            if (recipients.length > 5) {
-                const moreItem = document.createElement('div');
-                moreItem.className = 'recipient-item';
-                moreItem.innerHTML = `<div class="recipient-info">...and ${recipients.length - 5} more</div>`;
-                recipientsContainer.appendChild(moreItem);
-            }
-            
-        } catch (error) {
-            console.error('Error parsing CSV:', error);
-            showStatus(`${tabName}Status`, `❌ Error parsing CSV: ${error.message}`, 'error');
         }
-    };
+    });
     
-    reader.onerror = function() {
-        showStatus(`${tabName}Status`, '❌ Failed to read the file', 'error');
-    };
+    // Show validation results
+    if (invalidNumbers.length > 0) {
+        const errorMessage = `❌ Found ${invalidNumbers.length} invalid phone number(s):<br>` +
+            invalidNumbers.slice(0, 5).map(item => `Row ${item.row}: ${item.number}`).join('<br>') +
+            (invalidNumbers.length > 5 ? `<br>...and ${invalidNumbers.length - 5} more` : '');
+        
+        showStatus(`${tabName}Status`, errorMessage, 'error');
+        
+        // Still show preview if there are valid numbers
+        if (recipients.length > 0) {
+            renderCsvPreview(tabName, headers, rows, recipients.length, invalidNumbers.length);
+        }
+        return;
+    }
     
-    reader.readAsText(file);
+    if (recipients.length === 0) {
+        showStatus(`${tabName}Status`, '❌ No valid phone numbers found in the file', 'error');
+        return;
+    }
+    
+    // Store recipients data
+    window[`${tabName}Recipients`] = recipients;
+    
+    // Show success message
+    showStatus(`${tabName}Status`, `✅ Successfully loaded ${recipients.length} recipient(s)`, 'success');
+    
+    // Show preview
+    renderCsvPreview(tabName, headers, rows, recipients.length, 0);
+    
+    // Update recipients summary
+    document.getElementById(`${tabName}RecipientsCount`).textContent = `${recipients.length} recipients loaded`;
+    document.getElementById(`${tabName}RecipientsSummary`).style.display = 'block';
+    
+    // Clear any previous recipients
+    const recipientsContainer = document.getElementById(`${tabName}RecipientsContainer`);
+    recipientsContainer.innerHTML = '';
+    
+    // Add first 5 recipients to the summary
+    recipients.slice(0, 5).forEach(recipient => {
+        const recipientItem = document.createElement('div');
+        recipientItem.className = 'recipient-item';
+        
+        const nameDisplay = recipient.name ? `${recipient.name} (${recipient.number})` : recipient.number;
+        
+        recipientItem.innerHTML = `
+            <div class="recipient-info">${nameDisplay}</div>
+        `;
+        
+        recipientsContainer.appendChild(recipientItem);
+    });
+    
+    // Add "and X more" if there are more than 5 recipients
+    if (recipients.length > 5) {
+        const moreItem = document.createElement('div');
+        moreItem.className = 'recipient-item';
+        moreItem.innerHTML = `<div class="recipient-info">...and ${recipients.length - 5} more</div>`;
+        recipientsContainer.appendChild(moreItem);
+    }
 }
 
 // Parse CSV content
@@ -1889,7 +1935,7 @@ function resetSettings() {
     document.getElementById('confirmResetSettings').addEventListener('click', function() {
         appSettings = {
             randomDelayEnabled: true,
-            maxDelaySeconds: 300, // 5 minutes max
+            maxDelaySeconds: 30, // 30 seconds max
             pauseAfterBatch: false,
             pauseMinutes: 5,
             batchSize: 40,
@@ -2024,11 +2070,35 @@ function processMessageWithVariables(message, recipient) {
     processedMessage = processedMessage.replace(/{{number}}/gi, recipient.number || '');
     processedMessage = processedMessage.replace(/{{time}}/gi, new Date().toLocaleTimeString());
     
-    // Replace custom variables from CSV
+    // Replace custom variables from CSV - with case insensitive header matching
     for (const [key, value] of Object.entries(recipient)) {
         if (key !== 'number') {
             const regex = new RegExp(`{{${key}}}`, 'gi');
             processedMessage = processedMessage.replace(regex, value || '');
+        }
+    }
+    
+    // Check for any remaining variables using case-insensitive matching
+    const remainingVars = [...processedMessage.matchAll(/{{([^}]+)}}/gi)];
+    if (remainingVars.length > 0) {
+        for (const match of remainingVars) {
+            const varName = match[1].toLowerCase();
+            
+            // First check for the lowercase version (which we stored with _lc_ prefix)
+            if (recipient[`_lc_${varName}`] !== undefined) {
+                const regex = new RegExp(`{{${match[1]}}}`, 'gi');
+                processedMessage = processedMessage.replace(regex, recipient[`_lc_${varName}`] || '');
+                continue;
+            }
+            
+            // If not found with _lc_ prefix, try case-insensitive key matching
+            const matchingKey = Object.keys(recipient).find(
+                key => key.toLowerCase() === varName
+            );
+            if (matchingKey) {
+                const regex = new RegExp(`{{${match[1]}}}`, 'gi');
+                processedMessage = processedMessage.replace(regex, recipient[matchingKey] || '');
+            }
         }
     }
     

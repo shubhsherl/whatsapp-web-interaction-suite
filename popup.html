@@ -854,7 +854,7 @@
                         <label for="textRecipientsMethod">Recipients Method:</label>
                         <select id="textRecipientsMethod">
                             <option value="manual">Manual Entry</option>
-                            <option value="csv">CSV Upload</option>
+                            <option value="csv">File Upload</option>
                         </select>
                     </div>
                     
@@ -868,14 +868,14 @@
                     <div id="textCsvUpload" style="display: none;">
                         <div class="file-input-wrapper">
                             <div class="file-input">
-                                <input type="file" id="textCsvFile" accept=".csv" />
-                                <span>Upload CSV file with contacts</span>
+                                <input type="file" id="textCsvFile" accept=".csv,.xlsx,.xls" />
+                                <span>Upload CSV or Excel file with contacts</span>
                             </div>
                         </div>
-                        <div class="small-text">CSV should have columns: number, name (optional)</div>
+                        <div class="small-text">File should have columns: number, name (optional) - headers are case insensitive</div>
                         <div id="textCsvPreview" class="csv-preview" style="display: none;">
                             <div class="csv-preview-header">
-                                <h4>CSV Preview <span id="textCsvTotal" class="csv-total"></span></h4>
+                                <h4>File Preview <span id="textCsvTotal" class="csv-total"></span></h4>
                             </div>
                             <div class="csv-preview-table-container">
                                 <table id="textCsvTable" class="csv-preview-table"></table>
@@ -938,7 +938,7 @@
                         <label for="urlRecipientsMethod">Recipients Method:</label>
                         <select id="urlRecipientsMethod">
                             <option value="manual">Manual Entry</option>
-                            <option value="csv">CSV Upload</option>
+                            <option value="csv">File Upload</option>
                         </select>
                     </div>
                     
@@ -952,14 +952,14 @@
                     <div id="urlCsvUpload" style="display: none;">
                         <div class="file-input-wrapper">
                             <div class="file-input">
-                                <input type="file" id="urlCsvFile" accept=".csv" />
-                                <span>Upload CSV file with contacts</span>
+                                <input type="file" id="urlCsvFile" accept=".csv,.xlsx,.xls" />
+                                <span>Upload CSV or Excel file with contacts</span>
                             </div>
                         </div>
-                        <div class="small-text">CSV should have columns: number, name (optional)</div>
+                        <div class="small-text">File should have columns: number, name (optional) - headers are case insensitive</div>
                         <div id="urlCsvPreview" class="csv-preview" style="display: none;">
                             <div class="csv-preview-header">
-                                <h4>CSV Preview <span id="urlCsvTotal" class="csv-total"></span></h4>
+                                <h4>File Preview <span id="urlCsvTotal" class="csv-total"></span></h4>
                             </div>
                             <div class="csv-preview-table-container">
                                 <table id="urlCsvTable" class="csv-preview-table"></table>
@@ -1029,7 +1029,7 @@
                         <label for="fileRecipientsMethod">Recipients Method:</label>
                         <select id="fileRecipientsMethod">
                             <option value="manual">Manual Entry</option>
-                            <option value="csv">CSV Upload</option>
+                            <option value="csv">File Upload</option>
                         </select>
                     </div>
                     
@@ -1043,14 +1043,14 @@
                     <div id="fileCsvUpload" style="display: none;">
                         <div class="file-input-wrapper">
                             <div class="file-input">
-                                <input type="file" id="fileCsvFile" accept=".csv" />
-                                <span>Upload CSV file with contacts</span>
+                                <input type="file" id="fileCsvFile" accept=".csv,.xlsx,.xls" />
+                                <span>Upload CSV or Excel file with contacts</span>
                             </div>
                         </div>
-                        <div class="small-text">CSV should have columns: number, name (optional)</div>
+                        <div class="small-text">File should have columns: number, name (optional) - headers are case insensitive</div>
                         <div id="fileCsvPreview" class="csv-preview" style="display: none;">
                             <div class="csv-preview-header">
-                                <h4>CSV Preview <span id="fileCsvTotal" class="csv-total"></span></h4>
+                                <h4>File Preview <span id="fileCsvTotal" class="csv-total"></span></h4>
                             </div>
                             <div class="csv-preview-table-container">
                                 <table id="fileCsvTable" class="csv-preview-table"></table>
@@ -1275,6 +1275,8 @@
         </div>
     </footer>
     
+    <script src="src/jquery-3.7.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="src/popup.js"></script>
 </body>
 </html>

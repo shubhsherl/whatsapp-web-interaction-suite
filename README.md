@@ -32,12 +32,12 @@ A powerful Chrome extension for sending WhatsApp messages directly from your bro
 ### 👥 Recipient Options
 - **Single Contact**: Send to individual recipients
 - **Multiple Contacts**: Send to multiple recipients at once
-- **CSV Upload**: Import contacts from CSV files with validation
+- **Spreadsheet Upload**: Import contacts from CSV or Excel files with validation
 
 ### 📋 Templates
 - **Template Management**: Create, edit, and delete message templates
 - **Variable Support**: Use variables like {{name}}, {{number}}, {{time}}
-- **CSV Column Variables**: Use any column from your CSV as a variable
+- **Spreadsheet Column Variables**: Use any column from your spreadsheet as a variable
 
 ### 📊 History & Analytics
 - **Message History**: Track all sent messages
@@ -45,7 +45,7 @@ A powerful Chrome extension for sending WhatsApp messages directly from your bro
 - **Filtering**: Filter history by type, status, and search terms
 
 ### ⚙️ Advanced Settings
-- **Smart Delays**: Add random time gaps between messages (5-600 seconds)
+- **Smart Delays**: Add random time gaps between messages (5-30 seconds by default, configurable up to 600 seconds)
 - **Batch Pausing**: Automatically pause after sending a batch of messages
 - **Sleep Prevention**: Keep your device awake during long campaigns
 
@@ -76,27 +76,27 @@ A powerful Chrome extension for sending WhatsApp messages directly from your bro
 3. When composing a message, select a template from the dropdown
 4. Variables will be replaced with actual values when sending
 
-### Bulk Messaging with CSV
+### Bulk Messaging with Spreadsheets
 1. Select "Multiple" in any message tab
-2. Choose "CSV Upload" as the recipients method
-3. Upload your CSV file (must contain a column for phone numbers)
+2. Choose "File Upload" as the recipients method
+3. Upload your CSV or Excel file (must contain a column for phone numbers)
 4. Preview the data and confirm valid contacts
-5. Compose your message using CSV column names as variables: {{columnname}}
+5. Compose your message using column names as variables: {{columnname}}
 6. Configure delay settings in the Settings tab
 7. Send your message
 
-## CSV Format Requirements
+## Spreadsheet Format Requirements
 
-Your CSV file should include at least one column for phone numbers (labeled as number, phone, mobile, or contact). Additional columns can be used as variables.
+Your CSV or Excel file should include at least one column for phone numbers (labeled as number, phone, mobile, or contact). Additional columns can be used as variables. All column headers are processed case-insensitively.
 
 Example:
 ```csv
-number,name,company,product
+Number,Name,COMPANY,product
 918879331633,John Doe,ABC Corp,Premium Plan
 917012345678,Jane Smith,XYZ Inc,Basic Plan
 ```
 
-In your message, you can use `{{name}}`, `{{company}}`, and `{{product}}` as variables.
+In your message, you can use `{{name}}`, `{{company}}`, and `{{product}}` as variables. Case doesn't matter, so `{{NAME}}`, `{{Company}}`, and `{{PrOdUcT}}` will all work.
 
 ## Developer API
 
@@ -150,7 +150,7 @@ try {
 - **Number Format**: Always include the country code (e.g., 918879331633 for India)
 - **Media Support**: Supports images, videos, documents, and audio files
 - **File Size Limit**: Maximum file size is 16MB
-- **CSV Validation**: The extension validates phone numbers in your CSV
+- **File Validation**: The extension validates phone numbers in your spreadsheets
 
 ## Acknowledgements
 
