@@ -1,0 +1,51 @@
+{
+    "manifest_version": 2,
+    "name": "Whats Messenger",
+    "version": "1.0.0",
+    "description": "Whats Messenger - Send WhatsApp messages with templates, bulk messaging, smart delays, and advanced settings to avoid detection.",
+    "permissions": [
+        "tabs",
+        "alarms",
+        "https://web.whatsapp.com/*"
+    ],
+    "icons": {
+        "128": "icon-128.png",
+        "64": "icon-64.png"
+    },
+    "background": {
+        "scripts": ["src/background.js"],
+        "persistent": false
+    },
+    "browser_action": {
+        "default_popup": "popup.html",
+        "default_icon": "icon-64.png"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://web.whatsapp.com/*"],
+            "js": ["src/jquery-3.7.0.min.js", "src/content.js"]
+        },
+        {
+            "matches": ["https://web.whatsapp.com/*"],
+            "js": ["src/webapp.js"]
+        },
+        {
+            "matches": ["https://web.whatsapp.com/*"],
+            "js": ["src/moduleraid.js", "src/util/whatsapp.js"]
+        },
+        {
+            "matches": ["https://web.whatsapp.com/*"],
+            "js": ["src/whatsappContent.js"]
+        }
+    ],
+    "web_accessible_resources": [
+        "src/moduleraid.js",
+        "src/util/whatsapp.js"
+    ],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "whats-messenger@yourname.example",
+            "strict_min_version": "57.0"
+        }
+    }
+} 

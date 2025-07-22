@@ -160,3 +160,35 @@ try {
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Cross-Browser Compatibility
+
+### Firefox Extension
+
+This extension is compatible with both Chrome and Firefox browsers. To build the Firefox version:
+
+1. Use the provided Makefile to build both versions:
+   ```bash
+   make all
+   ```
+
+2. For just the Firefox version:
+   ```bash
+   make build-firefox zip-firefox
+   ```
+
+3. The Firefox extension will be available in `dist/whats-messenger-firefox-{version}.zip`
+
+### Key Differences in Firefox Version
+
+- Uses Manifest v2 instead of v3 (Firefox's full support for Manifest v3 is in progress)
+- Includes browser-specific API adaptations for Firefox compatibility
+- Contains a polyfill to handle Chrome/Firefox API differences
+- Has a unique extension ID in the `manifest.firefox.json` file
+
+### Installing the Firefox Extension
+
+1. Go to `about:debugging` in Firefox
+2. Click "This Firefox" in the left sidebar
+3. Click "Load Temporary Add-on..." and select the `manifest.json` file from the Firefox build folder
+4. For permanent installation, submit the extension to [Firefox Add-ons](https://addons.mozilla.org/)
